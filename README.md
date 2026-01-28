@@ -30,6 +30,12 @@ Out of Scope:
 ## Architecture (High-Level)
 Planner → Compute Engine → RAG (Finance Glossary) → Narrative Draft → Review Mode → Final Output
 
+
+## Security Notes
+- API keys are loaded via environment variables
+- No secrets are stored in code or committed to GitHub
+
+
 ## Limitations
 - Uses synthetic data
 - No operational drivers (e.g., churn or pipeline data)

@@ -14,7 +14,13 @@ pnl = pnl_actual.merge(
     suffixes=("_actual", "_budget")
 )
 
-pnl["variance"] = pnl["Amount_actual"] - pnl["Amount_budget"].abs()
+pnl["variance"] = pnl["Amount_actual"] - pnl["Amount_budget"]
+
+# Normalize variance sign for expenses (COGS and Opex)
+pnl.loc[pnl["Category"].isin(["COGS", "Opex"]), "variance"] *= -1
+
+pnl["abs_variance"] = pnl["variance"].abs()
+
 pnl["pct_variance"] = pnl["variance"] / pnl["Amount_budget"]
 
 print("\n==============================")
@@ -58,3 +64,32 @@ print("\n==============================")
 print("BALANCE SHEET MoM CHANGES")
 print("==============================")
 print(bs[["Account", "Amount_prior", "Amount_current", "change"]])
+
+def get_fpna_outputs():
+    return {
+        "pnl": pnl[[
+            "Account",
+            "Category",
+            "Amount_actual",
+            "Amount_budget",
+            "variance",
+            "pct_variance"
+        ]].to_dict(orient="records"),
+
+        "top_drivers": top_drivers[[
+            "Account",
+            "variance"
+        ]].to_dict(orient="records"),
+
+        "margins": {
+            "gross_margin_pct": gross_margin_pct,
+            "operating_margin_pct": operating_margin_pct
+        },
+
+        "balance_sheet": bs[[
+            "Account",
+            "Amount_prior",
+            "Amount_current",
+            "change"
+        ]].to_dict(orient="records")
+    }

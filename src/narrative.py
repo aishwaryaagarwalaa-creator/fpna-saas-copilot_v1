@@ -1,9 +1,25 @@
+def sanitize_text(text: str) -> str:
+    return (
+        text
+        .replace("\u2028", "\n")
+        .replace("\u2029", "\n")
+        .encode("utf-8", "ignore")
+        .decode("utf-8")
+    )
+
+
+
+
 import time
 from openai import APIConnectionError
 
 import json
 from compute import get_fpna_outputs
 from openai import OpenAI
+
+from dotenv import load_dotenv
+load_dotenv()
+
 
 # Initialize OpenAI client once
 import os
@@ -13,17 +29,29 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
 def load_rag_docs():
-    with open("rag/saas_glossary.md") as f:
-        glossary = f.read()
+    def clean(text):
+        return (
+            text
+            .replace("\u2028", "\n")
+            .replace("\u2029", "\n")
+            .encode("utf-8", "ignore")
+            .decode("utf-8")
+        )
 
-    with open("rag/reporting_rules.md") as f:
-        rules = f.read()
+    with open("rag/saas_glossary.md", encoding="utf-8") as f:
+        glossary = clean(f.read())
+
+    with open("rag/reporting_rules.md", encoding="utf-8") as f:
+        rules = clean(f.read())
 
     return glossary, rules
 
 
+
+
+
 def build_prompt(fpna_data, glossary, rules):
-    return f"""
+    prompt = f"""
 You are an FP&A Narrative Copilot for a SaaS company.
 
 Your task:
@@ -60,16 +88,28 @@ OUTPUT FORMAT
    - List any missing data
    - Ask clarifying questions if needed
 """
+    return sanitize_text(prompt)
+
+
 
 
 def generate_narrative(prompt, retries=2):
+    # Final safety: ensure absolutely clean unicode before API call
+    safe_prompt = (
+        prompt
+        .replace("\u2028", "\n")
+        .replace("\u2029", "\n")
+        .encode("utf-8", "ignore")
+        .decode("utf-8")
+    )
+
     for attempt in range(retries):
         try:
             response = client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
                     {"role": "system", "content": "You are an FP&A Narrative Copilot."},
-                    {"role": "user", "content": prompt}
+                    {"role": "user", "content": safe_prompt}
                 ],
                 temperature=0.2
             )
@@ -79,6 +119,8 @@ def generate_narrative(prompt, retries=2):
             if attempt == retries - 1:
                 raise
             time.sleep(2)
+
+
 
 
     return response.choices[0].message.content
